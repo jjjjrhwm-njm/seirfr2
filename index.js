@@ -14,8 +14,7 @@ export default {
       const data = await request.json();
       const { user_id, project_name, code, environment_variables } = data;
 
-      // ========== v15.0 BRACKET ENCLOSURES + BASE64 SYSTEM ==========
-      // Package all payload data into a single Base64 encoded string
+      // ========== v15.0 UNIFIED PROTOCOL ==========
       const payloadObject = {
         code: code,
         vars: environment_variables,
@@ -26,7 +25,6 @@ export default {
       const payloadJson = JSON.stringify(payloadObject);
       const base64Payload = btoa(unescape(encodeURIComponent(payloadJson)));
       
-      // Create the final data record with bracket enclosures - NO line breaks needed inside brackets
       const dataRecord = [
         `[NAJM_ID:${user_id}]`,
         `[NAJM_PRJ:${project_name}]`,
@@ -35,7 +33,6 @@ export default {
         `[NAJM_PAYLOAD_END]`
       ].join('\n');
 
-      // Send to Telegram with absolutely no formatting
       const telegramResponse = await fetch(`https://api.telegram.org/bot8683006680:AAGUqsPrC76xKnUgAep3tigtGVXsLKc86mI/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
