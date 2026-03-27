@@ -14,7 +14,7 @@ export default {
       const data = await request.json();
       const { user_id, project_name, code, environment_variables } = data;
 
-      // ========== v11.0 EXACT STRUCTURE ==========
+      // ========== v12.0 FINAL STABLE STRUCTURE ==========
       // Plain text only - NO HTML, NO formatting, NO markdown
       const plainMessage = [
         `ID:${user_id}`,
