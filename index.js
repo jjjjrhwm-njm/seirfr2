@@ -1,4 +1,4 @@
-// Cloudflare Worker - najm-backend (كامل)
+// Cloudflare Worker - najm-backend (الحل النهائي)
 const BOT_TOKEN = "8683006680:AAGUqsPrC76xKnUgAep3tigtGVXsLKc86mI";
 const CHAT_ID = "@nejm_njm";
 
@@ -75,7 +75,7 @@ export default {
       }
     }
     
-    // ========== جلب مشاريع المطور ==========
+    // ========== جلب مشاريع المطور (طريقة مختلفة) ==========
     if (request.method === "GET" && url.pathname === "/get-projects") {
       const userId = url.searchParams.get("user_id");
       if (!userId) {
@@ -83,51 +83,56 @@ export default {
       }
       
       try {
-        const messagesResponse = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getUpdates`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: CHAT_ID,
-            limit: 100
-          })
+        // نجيب آخر 100 رسالة من القناة عن طريق جلب الصفحة
+        const telegramPage = await fetch(`https://t.me/s/nejm_njm`, {
+          headers: { 'User-Agent': 'Mozilla/5.0' }
         });
+        const html = await telegramPage.text();
         
-        const messagesData = await messagesResponse.json();
         const projects = [];
         
-        if (messagesData.ok && messagesData.result) {
-          for (const update of messagesData.result) {
-            const message = update.message || update.channel_post;
-            if (message && message.text) {
-              const text = message.text;
-              
-              const idMatch = text.match(/\[NAJM_ID:\s*([^\]]+)\]/i);
-              const prjMatch = text.match(/\[NAJM_PRJ:\s*([^\]]+)\]/i);
-              const payloadMatch = text.match(/\[NAJM_PAYLOAD_START\]([\s\S]*?)\[NAJM_PAYLOAD_END\]/i);
-              
-              if (idMatch && prjMatch && payloadMatch) {
-                const uid = idMatch[1].trim();
-                const prjName = prjMatch[1].trim();
+        // نقسم الصفحة إلى رسائل
+        const messageRegex = /<div class="tgme_widget_message[^>]*>([\s\S]*?)<\/div><div class="tgme_widget_message_bubble"/g;
+        let match;
+        
+        while ((match = messageRegex.exec(html)) !== null) {
+          const messageHtml = match[1];
+          
+          // استخراج المعرف والمشروع
+          const idMatch = messageHtml.match(/\[NAJM_ID:\s*([^\]]+)\]/i);
+          const prjMatch = messageHtml.match(/\[NAJM_PRJ:\s*([^\]]+)\]/i);
+          const payloadMatch = messageHtml.match(/\[NAJM_PAYLOAD_START\]([\s\S]*?)\[NAJM_PAYLOAD_END\]/i);
+          
+          if (idMatch && prjMatch && payloadMatch) {
+            const uid = idMatch[1].trim();
+            const prjName = prjMatch[1].trim();
+            
+            if (uid === userId) {
+              try {
+                let base64Payload = payloadMatch[1].trim();
+                // تنظيف base64 من أي أحرف إضافية
+                base64Payload = base64Payload.replace(/\s/g, '').replace(/<[^>]*>/g, '');
                 
-                if (uid === userId) {
-                  try {
-                    const base64Payload = payloadMatch[1].trim();
-                    const decodedJson = decodeBase64(base64Payload);
-                    if (decodedJson) {
-                      const payload = JSON.parse(decodedJson);
-                      projects.push({
-                        name: prjName,
-                        code: payload.code || "",
-                        envVars: payload.vars || {},
-                        url: `https://vercelseifr.vercel.app/${encodeURIComponent(userId)}/${encodeURIComponent(prjName)}`
-                      });
-                    }
-                  } catch(e) {}
+                // فك التشفير
+                const decodedJson = decodeBase64Simple(base64Payload);
+                if (decodedJson) {
+                  const payload = JSON.parse(decodedJson);
+                  projects.push({
+                    name: prjName,
+                    code: payload.code || "",
+                    envVars: payload.vars || {},
+                    url: `https://vercelseifr.vercel.app/${encodeURIComponent(userId)}/${encodeURIComponent(prjName)}`
+                  });
                 }
+              } catch(e) {
+                console.log("Error parsing project:", prjName, e.message);
               }
             }
           }
         }
+        
+        // عكس الترتيب عشان الأحدث أولاً
+        projects.reverse();
         
         return new Response(JSON.stringify({
           success: true,
@@ -147,9 +152,17 @@ export default {
   }
 };
 
-function decodeBase64(base64Str) {
+function decodeBase64Simple(base64Str) {
   try {
-    let cleaned = base64Str.trim().replace(/\s/g, '');
+    // تنظيف النص
+    let cleaned = base64Str.trim();
+    // إزالة أي HTML entities
+    cleaned = cleaned.replace(/&amp;/g, '&')
+                     .replace(/&lt;/g, '<')
+                     .replace(/&gt;/g, '>')
+                     .replace(/&quot;/g, '"')
+                     .replace(/&#39;/g, "'");
+    
     const binaryString = atob(cleaned);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
