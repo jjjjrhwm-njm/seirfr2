@@ -14,27 +14,25 @@ export default {
       const data = await request.json();
       const { user_id, project_name, code, environment_variables } = data;
 
-      // ========== v14.0 BASE64 PACKAGING SYSTEM ==========
+      // ========== v15.0 BRACKET ENCLOSURES + BASE64 SYSTEM ==========
       // Package all payload data into a single Base64 encoded string
       const payloadObject = {
         code: code,
         vars: environment_variables,
         timestamp: Date.now(),
-        version: "14.0"
+        version: "15.0"
       };
       
       const payloadJson = JSON.stringify(payloadObject);
       const base64Payload = btoa(unescape(encodeURIComponent(payloadJson)));
       
-      // Create the final data record with Base64 encoding
+      // Create the final data record with bracket enclosures - NO line breaks needed inside brackets
       const dataRecord = [
-        `[ Najm-Cloud-v14-System ]`,
-        `ID:${user_id}`,
-        `PRJ:${project_name}`,
-        `[ENCODED_PAYLOAD_START]`,
+        `[NAJM_ID:${user_id}]`,
+        `[NAJM_PRJ:${project_name}]`,
+        `[NAJM_PAYLOAD_START]`,
         `${base64Payload}`,
-        `[ENCODED_PAYLOAD_END]`,
-        `---METADATA---${JSON.stringify({ uid: user_id, pid: project_name, timestamp: Date.now() })}---METADATA---`
+        `[NAJM_PAYLOAD_END]`
       ].join('\n');
 
       // Send to Telegram with absolutely no formatting
