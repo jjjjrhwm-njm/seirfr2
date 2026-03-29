@@ -1,6 +1,5 @@
 // ==========================================
-// نجم كلاود - السوبر واركر v20.0 (النسخة الكاملة)
-// يدير: قاعدة البيانات + الـ SEO + واجهة المستخدم
+// نجم كلاود - السوبر واركر v20.5 (النسخة المصححة)
 // ==========================================
 
 export default {
@@ -8,7 +7,6 @@ export default {
     const url = new URL(request.url);
     const method = request.method;
 
-    // إعدادات الـ CORS للسماح بالاتصال من أي مكان
     const headers = { 
       "Access-Control-Allow-Origin": "*", 
       "Access-Control-Allow-Headers": "Content-Type", 
@@ -18,31 +16,12 @@ export default {
 
     if (method === "OPTIONS") return new Response(null, { headers });
 
-    // ------------------------------------------
-    // 1. قسم محركات البحث (SEO Gates)
-    // ------------------------------------------
-    
-    // ملف الروبوتات
+    // 1. قسم SEO
     if (url.pathname === "/robots.txt") {
-      return new Response(`User-agent: *\nAllow: /\nSitemap: ${url.origin}/sitemap.xml`, {
-        headers: { "Content-Type": "text/plain" }
-      });
+      return new Response(`User-agent: *\nAllow: /`, { headers: { "Content-Type": "text/plain" } });
     }
 
-    // خريطة الموقع
-    if (url.pathname === "/sitemap.xml") {
-      const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-      <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-         <url><loc>${url.origin}/</loc><priority>1.0</priority></url>
-      </urlset>`;
-      return new Response(sitemap, { headers: { "Content-Type": "application/xml" } });
-    }
-
-    // ------------------------------------------
-    // 2. قسم قاعدة البيانات (Database API)
-    // ------------------------------------------
-
-    // مسار حفظ المشروع (POST)
+    // 2. مسار حفظ المشروع (POST)
     if (method === "POST" && url.pathname === "/deploy") {
       try {
         const data = await request.json();
@@ -50,7 +29,7 @@ export default {
         const payload = {
           uid: data.user_id,
           pid: data.project_name,
-          code: data.code, // الكود المشفر كـ JSON
+          code: data.code,
           vars: data.environment_variables || {},
           timestamp: Date.now()
         };
@@ -61,7 +40,24 @@ export default {
       }
     }
 
-    // مسار جلب المشاريع للمستخدم (GET)
+    // ⭐ 3. مسار جلب كود مشروع محدد (هذا اللي كان ناقص!)
+    if (method === "GET" && url.pathname === "/get-code") {
+      const userId = url.searchParams.get("user_id");
+      const projName = url.searchParams.get("project_name");
+      const dbKey = `${userId}_${projName}`;
+      try {
+        const value = await env.NAJM_DB.get(dbKey);
+        if (value) {
+          return new Response(value, { headers });
+        } else {
+          return new Response(JSON.stringify({ error: "Project not found" }), { status: 404, headers });
+        }
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
+      }
+    }
+
+    // 4. مسار جلب قائمة المشاريع
     if (method === "GET" && url.pathname === "/get-projects") {
       const userId = url.searchParams.get("user_id");
       try {
@@ -73,8 +69,6 @@ export default {
             const p = JSON.parse(value);
             projects.push({
               name: p.pid,
-              code: p.code,
-              envVars: p.vars,
               url: `https://vercelseifr.vercel.app/${encodeURIComponent(p.uid)}/${encodeURIComponent(p.pid)}`
             });
           }
@@ -85,21 +79,6 @@ export default {
       }
     }
 
-    // ------------------------------------------
-    // 3. قسم واجهة المستخدم (The Dashboard UI)
-    // ------------------------------------------
-    
-    // إذا لم يكن الطلب لـ API أو SEO، نعطيه اللوحة الزرقاء (HTML)
-    if (method === "GET" && (url.pathname === "/" || url.pathname === "")) {
-      // هنا تضع كود الـ HTML الاحترافي الذي طورناه في الخطوات السابقة
-      const html = `<!DOCTYPE html>...كود الـ HTML الكامل هنا...`; 
-      
-      return new Response(html, {
-        headers: { "Content-Type": "text/html; charset=utf-8" }
-      });
-    }
-
-    // رد افتراضي لأي مسار غير معروف
     return new Response(JSON.stringify({ error: "Route not found" }), { status: 404, headers });
   }
 };
