@@ -1,5 +1,6 @@
 // ==========================================
-// نجم كلاود - السوبر واركر v20.5 (النسخة المصححة)
+// نجم كلاود - البكند (السوبر واركر) v21.0
+// تمت إضافة ميزة الحذف النهائي للمشاريع 🗑️
 // ==========================================
 
 export default {
@@ -10,10 +11,11 @@ export default {
     const headers = { 
       "Access-Control-Allow-Origin": "*", 
       "Access-Control-Allow-Headers": "Content-Type", 
-      "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE",
       "Content-Type": "application/json; charset=utf-8"
     };
 
+    // معالجة طلبات الـ OPTIONS (للسماح بالاتصال من المتصفح)
     if (method === "OPTIONS") return new Response(null, { headers });
 
     // 1. قسم SEO
@@ -21,7 +23,7 @@ export default {
       return new Response(`User-agent: *\nAllow: /`, { headers: { "Content-Type": "text/plain" } });
     }
 
-    // 2. مسار حفظ المشروع (POST)
+    // 2. مسار حفظ/تحديث المشروع (POST)
     if (method === "POST" && url.pathname === "/deploy") {
       try {
         const data = await request.json();
@@ -40,7 +42,7 @@ export default {
       }
     }
 
-    // ⭐ 3. مسار جلب كود مشروع محدد (هذا اللي كان ناقص!)
+    // ⭐ 3. مسار جلب كود مشروع محدد (للتشغيل في فيرسل)
     if (method === "GET" && url.pathname === "/get-code") {
       const userId = url.searchParams.get("user_id");
       const projName = url.searchParams.get("project_name");
@@ -57,7 +59,7 @@ export default {
       }
     }
 
-    // 4. مسار جلب قائمة المشاريع
+    // 4. مسار جلب قائمة المشاريع للوحة التحكم
     if (method === "GET" && url.pathname === "/get-projects") {
       const userId = url.searchParams.get("user_id");
       try {
@@ -79,6 +81,22 @@ export default {
       }
     }
 
+    // 🗑️ 5. مسار حذف المشروع نهائياً (الميزة الجديدة)
+    if (method === "POST" && url.pathname === "/delete-project") {
+      try {
+        const data = await request.json();
+        const dbKey = `${data.user_id}_${data.project_name}`;
+        
+        // أمر الحذف من قاعدة البيانات KV
+        await env.NAJM_DB.delete(dbKey);
+        
+        return new Response(JSON.stringify({ success: true }), { headers });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), { status: 500, headers });
+      }
+    }
+
+    // رد افتراضي إذا كان المسار غير موجود
     return new Response(JSON.stringify({ error: "Route not found" }), { status: 404, headers });
   }
 };
