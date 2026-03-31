@@ -71,7 +71,9 @@ export default {
             const p = JSON.parse(value);
             projects.push({
               name: p.pid,
-              url: `https://vercelseifr.vercel.app/${encodeURIComponent(p.uid)}/${encodeURIComponent(p.pid)}`
+              url: `https://vercelseifr.vercel.app/${encodeURIComponent(p.uid)}/${encodeURIComponent(p.pid)}`,
+              code: p.code,      // ✅ تمت الإضافة: كود المشروع (VFS)
+              vars: p.vars       // ✅ تمت الإضافة: المتغيرات البيئية
             });
           }
         }
